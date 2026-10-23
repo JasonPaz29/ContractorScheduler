@@ -12,8 +12,6 @@ class User(db.Model, UserMixin):
     display_name = db.Column(db.String(155), nullable=False)
     username = db.Column(db.String(200), unique=True, nullable=False)
     password = db.Column(db.String(255), nullable=False)
-    #NOTE: This is temporarily only going to be given to one person through admin commands.
-    is_contractor = db.Column(db.Boolean, default=False)
 
     def hash_password(self, password: str) -> str:
         return generate_password_hash(password=password)
@@ -31,3 +29,4 @@ class User(db.Model, UserMixin):
         if contains_profanity(username):
             raise Exception("Your username has profanity in it!")
         return username
+    
