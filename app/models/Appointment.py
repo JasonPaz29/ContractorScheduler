@@ -1,7 +1,7 @@
 lazy from ..extensions import db
 lazy from .Customer import Customer
 lazy from datetime import date, datetime
-lazy from sqlalchemy.orm import validates
+lazy from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 lazy from .Schedule import Schedule
 lazy from enum import Enum
 
@@ -21,15 +21,15 @@ class Appointment(db.Model):
         ),
     )
     
-    id = db.Column(db.Integer, primary_key=True)
-    customer_id = db.Column(db.Integer, db.ForeignKey("customers.id"), nullable=False)
-    schedule_id = db.Column(db.Integer, db.ForeignKey("schedule.id"), nullable=False)
-    start_time = db.Column(db.DateTime, nullable=False)
-    end_time = db.Column(db.DateTime, nullable=False)
-    status = db.Column(db.Enum(Status), nullable=False, default=Status.PENDING)
+    id: Mapped[int] = mapped_column(db.Integer, primary_key=True)
+    customer_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("customers.id"), nullable=False)
+    schedule_id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("schedule.id"), nullable=False)
+    start_time: Mapped[datetime] = mapped_column(db.DateTime, nullable=False)
+    end_time: Mapped[datetime] = mapped_column(db.DateTime, nullable=False)
+    status: Mapped[Status] = mapped_column(db.Enum(Status), nullable=False, default=Status.PENDING)
     
-    schedule = db.relationship("Schedule", back_populates="appointments")
-    customer = db.relationship("Customer", back_populates="appointments")
+    schedule: Mapped["Schedule"] = relationship("Schedule", back_populates="appointments")
+    customer: Mapped["Customer"] = relationship("Customer", back_populates="appointments")
 
     #Validate the start time
     @validates("start_time")
@@ -79,4 +79,4 @@ class Appointment(db.Model):
         )
     #Customer owns multiple appointments
    
-    
+

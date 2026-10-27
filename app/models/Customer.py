@@ -1,6 +1,6 @@
 lazy from ..extensions import db
 lazy from .User import User
-lazy from sqlalchemy.orm import Mapped, relationship
+lazy from sqlalchemy.orm import Mapped, mapped_column, relationship
 lazy from .Appointment import Appointment, Status
 lazy from datetime import datetime
 lazy from .Schedule import Schedule
@@ -8,7 +8,7 @@ lazy from .Schedule import Schedule
 class Customer(User):
     __tablename__ = "customers"
     
-    id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, primary_key=True)
+    id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("users.id"), nullable=False, primary_key=True)
     
     #Mapped for VSCode issues.
     appointments: Mapped[list["Appointment"]] = relationship("Appointment", back_populates="customer", cascade="all, delete-orphan", lazy="selectin")
@@ -23,6 +23,8 @@ class Customer(User):
         return appointment
     
     def cancel_appointment(self, appointment: Appointment) -> None:
+        if self.id is None or self.id != appointment.customer_id:
+            raise ValueError("This appointment does not belong to you!")
         appointment.cancel()
     
     def get_pending_appointments(self) -> list[Appointment]:

@@ -1,17 +1,22 @@
 lazy from ..extensions import db
 lazy from flask_login import UserMixin
 lazy from werkzeug.security import generate_password_hash, check_password_hash
-lazy from sqlalchemy.orm import validates
+lazy from sqlalchemy.orm import Mapped, mapped_column, validates
 lazy from ..services.profanity_check import contains_profanity
 
 
 class User(db.Model, UserMixin):
     __tablename__ = "users"
     
-    id = db.Column(db.Integer, primary_key=True)
-    display_name = db.Column(db.String(155), nullable=False)
-    username = db.Column(db.String(200), unique=True, nullable=False)
-    password = db.Column(db.String(255), nullable=False)
+    def __init__(self, display_name: str, username: str, password: str) -> None:
+        self.display_name = display_name
+        self.username = username
+        self.password = password
+
+    id: Mapped[int] = mapped_column(db.Integer, primary_key=True)
+    display_name: Mapped[str] = mapped_column(db.String(155), nullable=False)
+    username: Mapped[str] = mapped_column(db.String(200), unique=True, nullable=False)
+    password: Mapped[str] = mapped_column(db.String(255), nullable=False)
 
     def hash_password(self, password: str) -> str:
         return generate_password_hash(password=password)
@@ -29,4 +34,4 @@ class User(db.Model, UserMixin):
         if contains_profanity(username):
             raise Exception("Your username has profanity in it!")
         return username
-    
+
