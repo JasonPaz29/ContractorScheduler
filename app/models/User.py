@@ -4,7 +4,7 @@ lazy from werkzeug.security import generate_password_hash, check_password_hash
 lazy from sqlalchemy.orm import Mapped, mapped_column, validates
 lazy from ..services.profanity_check import contains_profanity
 
-
+#TODO Add Email attribute
 class User(db.Model, UserMixin):
     __tablename__ = "users"
     
@@ -17,7 +17,12 @@ class User(db.Model, UserMixin):
     display_name: Mapped[str] = mapped_column(db.String(155), nullable=False)
     username: Mapped[str] = mapped_column(db.String(200), unique=True, nullable=False)
     password: Mapped[str] = mapped_column(db.String(255), nullable=False)
-
+    account_type: Mapped[str] = mapped_column(db.String(20), nullable=False, default="customer")
+    
+    __mapper_args__ = {
+        "polymorphic_on": "account_type",
+        "polymorphic_identity": "user",
+    }
     def hash_password(self, password: str) -> str:
         return generate_password_hash(password=password)
     

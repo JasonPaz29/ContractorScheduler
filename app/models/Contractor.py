@@ -11,7 +11,9 @@ class Contractor(User):
     
     schedule: Mapped["Schedule"] = relationship("Schedule", back_populates="contractor", cascade="all, delete-orphan", lazy="selectin")
     
-    
+    __mapper_args__ = {
+            "polymorphic_identity": "contractor",
+        }
     def _validate_appointment_ownership(self, appointment: Appointment) -> None:
         if self.schedule is None:
             raise ValueError("This contractor has no schedule!")

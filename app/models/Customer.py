@@ -10,15 +10,25 @@ class Customer(User):
     
     id: Mapped[int] = mapped_column(db.Integer, db.ForeignKey("users.id"), nullable=False, primary_key=True)
     
+    __mapper_args__ = {
+                "polymorphic_identity": "customer",
+            }
     #Mapped for VSCode issues.
     appointments: Mapped[list["Appointment"]] = relationship("Appointment", back_populates="customer", cascade="all, delete-orphan", lazy="selectin")
     
     def request_appointment(self, start_time: datetime, end_time: datetime, schedule: Schedule) -> Appointment:
+        if self.id is None:
+            raise ValueError("The customer must be saved first.")
+
+        if schedule is None or schedule.id is None:
+            raise ValueError("A saved schedule is required.")
         appointment = Appointment()
+        appointment.check_start_end_time(start_time, end_time)
         appointment.start_time = start_time
         appointment.end_time = end_time
         appointment.customer_id = self.id
         appointment.schedule_id = schedule.id
+        appointment.status = Status.PENDING
         
         return appointment
     
