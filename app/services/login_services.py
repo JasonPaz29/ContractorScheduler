@@ -13,9 +13,11 @@ def load_user(user_id):
 
     return db.session.get(User, parsed_id)
 
-def register(display_name:str, username: str, password: str, choice: str):
+def register(display_name:str, username: str, password: str, choice: str) -> User:
+    username = username.strip()
+    display_name = display_name.strip()
     existing_user = User.query.filter(User.username == username).first()
-    if not username or not password or not display_name:
+    if not username or not password.strip() or not display_name:
         raise Exception("One or more textboxes have been left blank!")
     
     if existing_user:
@@ -28,8 +30,11 @@ def register(display_name:str, username: str, password: str, choice: str):
     try:
         db.session.add(user)
         db.session.commit()
-    except:
+    except Exception:
         db.session.rollback()
+        raise
+    
+    return user
         
 def login(username: str, password: str):
     existing_user = User.query.filter(User.username == username).first()
