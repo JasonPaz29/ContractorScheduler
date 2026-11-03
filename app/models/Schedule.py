@@ -21,9 +21,9 @@ class Schedule(db.Model):
                 todays_appointments.append(appointment)
         return todays_appointments
 
-    def check_conflict(self, other: Appointment) -> bool:
+    def check_conflict(self, other: Appointment, exclude: Appointment | None = None) -> bool:
         for appointment in self.appointments:
-            if appointment is other:
+            if appointment is other or appointment is exclude:
                 continue
             if appointment.schedule_id != self.id:
                 raise ValueError("This appointment is not apart of the schedule!")
