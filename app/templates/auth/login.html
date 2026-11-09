@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f8f5ee">
+  <meta name="description" content="IT Scheduler — view your schedule and keep track of your appointments.">
+  <title>Sign in · IT Scheduler</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/site.css') }}">
+  <script src="{{ url_for('static', filename='js/site.js') }}" defer></script>
+</head>
+<body>
+{% set active_page = 'login' %}
+<a class="skip-link" href="#main-content">Skip to main content</a>
+<header class="site-header">
+  <div class="shell header-inner">
+    <a class="brand" href="{{ url_for('home.home') }}">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span><span class="brand-name">IT Scheduler</span><span class="brand-caption">A little easier to plan.</span></span>
+    </a>
+    <nav class="nav" aria-label="Main navigation">
+      {% if current_user.is_authenticated %}
+        {% if current_user.account_type == 'customer' %}
+        <a href="{{ url_for('customer.dashboard') }}"{% if active_page == 'dashboard' %} aria-current="page"{% endif %}>My schedule</a>
+        {% elif current_user.account_type == 'contractor' %}
+        <a href="{{ url_for('contractor.dashboard') }}"{% if active_page == 'dashboard' %} aria-current="page"{% endif %}>My schedule</a>
+        {% endif %}
+        <a class="nav-signout" href="{{ url_for('auth.logout') }}">Sign out</a>
+      {% else %}
+        <a href="{{ url_for('auth.login') }}"{% if active_page == 'login' %} aria-current="page"{% endif %}>Sign in</a>
+        <a href="{{ url_for('auth.register') }}"{% if active_page == 'register' %} aria-current="page"{% endif %}>Create account</a>
+      {% endif %}
+    </nav>
+  </div>
+</header>
+<main id="main-content" class="shell auth-main" tabindex="-1">
+  <div class="auth-layout">
+    <section class="auth-intro" aria-labelledby="login-heading">
+      <p class="eyebrow">Your account</p>
+      <h1 id="login-heading">Welcome back.<br>Let's find your schedule.</h1>
+      <p>Sign in to see your appointments and the latest updates, all in one place.</p>
+      <div class="auth-aside"><h2>Customer or contractor?</h2><p>You're in the right place. Your account opens the schedule view that's right for you.</p></div>
+    </section>
+    <section class="form-panel" aria-labelledby="form-heading">
+      <h2 id="form-heading">Sign in</h2>
+      <p>Enter the username and password for your account.</p>
+      {% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<div class="message-stack" aria-label="Account messages">
+  {% for category, message in messages %}
+  <p class="message{% if category == 'error' %} message-error{% elif category == 'success' %} message-success{% endif %}" role="{{ 'alert' if category == 'error' else 'status' }}">{{ message }}</p>
+  {% endfor %}
+</div>
+{% endif %}
+{% endwith %}
+      <form class="account-form" method="post" action="{{ url_for('auth.login') }}" data-account-form data-submitting-label="Signing in…">
+        <div class="field"><label for="username">Username</label><input id="username" name="username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="200" required value="{{ form_values.get('username', '') if form_values is defined else '' }}" aria-describedby="username-error"><p class="field-error" id="username-error" hidden>Please enter your username.</p></div>
+        <div class="field"><label for="password">Password</label><div class="password-field"><input id="password" name="password" type="password" autocomplete="current-password" required aria-describedby="password-error"><button type="button" class="password-toggle" data-password-toggle="password" aria-label="Show password" aria-controls="password" aria-pressed="false">Show</button></div><p class="field-error" id="password-error" hidden>Please enter your password.</p></div>
+        <button class="button form-submit" type="submit">Sign in</button>
+      </form>
+      <p class="form-footer">New here? <a href="{{ url_for('auth.register') }}">Create a customer account</a></p>
+    </section>
+  </div>
+</main>
+<footer class="site-footer">
+  <div class="shell footer-inner">
+    <span>IT Scheduler</span>
+    <span>Appointments, clearly arranged.</span>
+  </div>
+</footer>
+</body>
+</html>

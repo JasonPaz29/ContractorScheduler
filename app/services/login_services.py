@@ -2,7 +2,7 @@ lazy from ..extensions import db, login_manager
 lazy from ..models.User import User
 lazy from ..models.Customer import Customer
 lazy from..models.Contractor import Contractor
-lazy from flask_login import login_user, logout_user, login_required
+lazy from flask_login import login_user, logout_user
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -43,6 +43,5 @@ def login(username: str, password: str):
     
     login_user(existing_user)
 
-@login_required
 def logout():
     logout_user()

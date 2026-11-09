@@ -43,3 +43,6 @@ dist/
 *.swo
 .DS_Store
 ._*
+docs/
+instance/
+migrations/

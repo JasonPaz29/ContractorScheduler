@@ -1,5 +1,5 @@
 lazy from ..models.Appointment import Appointment, Status
-lazy from flask_login import current_user, login_required
+lazy from flask_login import current_user
 lazy from datetime import datetime, date
 lazy from ..models.Schedule import Schedule
 lazy from flask import flash
@@ -15,7 +15,6 @@ def commit_changes() -> None:
         db.session.rollback()
         raise
 
-@login_required
 def create_appointment(start_time: datetime, end_time: datetime, schedule: Schedule) -> Appointment:
     if current_user.account_type != "customer":
         raise Exception("You are not allowed to create an appointment!")
@@ -27,7 +26,6 @@ def create_appointment(start_time: datetime, end_time: datetime, schedule: Sched
     commit_changes()
     return appointment
 
-@login_required
 def cancel_appointment(appointment: Appointment) -> bool:
     if current_user.account_type not in ("customer", "contractor"):
         raise Exception("You are not allowed to cancel an appointment!")
@@ -40,7 +38,6 @@ def cancel_appointment(appointment: Appointment) -> bool:
         flash(f"An Error occured:{e}")
         return False
     
-@login_required
 def confirm_appointment(appointment: Appointment) -> bool:
     if current_user.account_type != "contractor":
         raise Exception("You are not allowed to cancel an appointment!")
@@ -50,13 +47,11 @@ def confirm_appointment(appointment: Appointment) -> bool:
     flash("The appointment was confirmed!")
     return True
     
-@login_required
 def get_appointments_for_day(day: date) -> list[Appointment]:
     if current_user.account_type != "contractor":
         raise Exception("You are not allowd to view the daily appointments!")
     return current_user.schedule.get_appointments_for_day(day)
 
-@login_required
 def reject_appointment(appointment: Appointment) -> bool:
     if current_user.account_type != "contractor":
         raise Exception("You are not allowed to reject an appointment!")
@@ -66,7 +61,6 @@ def reject_appointment(appointment: Appointment) -> bool:
     flash("The appointment was rejected!")
     return True
 
-@login_required
 def reschedule_appointment(appointment: Appointment, new_start: datetime, new_end: datetime) -> bool:
     if current_user.account_type not in ("customer", "contractor"):
         raise Exception("You are not allowed to reschedule an appointment!")
@@ -100,7 +94,6 @@ def reschedule_appointment(appointment: Appointment, new_start: datetime, new_en
         flash(f"An Error occured: {e}")
         return False
 
-@login_required
 def get_appointment(appointment_id: int) -> Appointment:
     appointment = Appointment.query.filter_by(id=appointment_id).first()
 
@@ -112,7 +105,6 @@ def get_appointment(appointment_id: int) -> Appointment:
     
     return appointment
     
-@login_required    
 def get_my_appointments(status=None) -> list[Appointment]:
     if current_user.account_type != "customer":
         raise Exception("You are not a customer!")
@@ -123,7 +115,6 @@ def get_my_appointments(status=None) -> list[Appointment]:
     return query.all()
 
 
-@login_required
 def get_pending_requests() -> list[Appointment]:
     if current_user.account_type != "contractor":
         raise Exception("You are not a contractor!")

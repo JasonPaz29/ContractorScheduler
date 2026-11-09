@@ -11,6 +11,10 @@ def create_app():
     
     login_manager.init_app(app)
     login_manager.login_view = "auth.login" #type: ignore
+
+    # Register account types and the session loader before serving requests.
+    from .models import User, Customer, Contractor, Schedule, Appointment
+    from .services import login_services
     
     from .routes import auth_routes, contractor_routes, customer_routes, home_routes
     app.register_blueprint(auth_routes.auth_bp)

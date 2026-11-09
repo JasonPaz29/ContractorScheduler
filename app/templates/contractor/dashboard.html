@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f8f5ee">
+  <meta name="description" content="IT Scheduler — view your schedule and keep track of your appointments.">
+  <title>Your schedule · IT Scheduler</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/site.css') }}">
+  <script src="{{ url_for('static', filename='js/site.js') }}" defer></script>
+</head>
+<body>
+{% set active_page = 'dashboard' %}
+<a class="skip-link" href="#main-content">Skip to main content</a>
+<header class="site-header">
+  <div class="shell header-inner">
+    <a class="brand" href="{{ url_for('home.home') }}">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span><span class="brand-name">IT Scheduler</span><span class="brand-caption">A little easier to plan.</span></span>
+    </a>
+    <nav class="nav" aria-label="Main navigation">
+      {% if current_user.is_authenticated %}
+        {% if current_user.account_type == 'customer' %}
+        <a href="{{ url_for('customer.dashboard') }}"{% if active_page == 'dashboard' %} aria-current="page"{% endif %}>My schedule</a>
+        {% elif current_user.account_type == 'contractor' %}
+        <a href="{{ url_for('contractor.dashboard') }}"{% if active_page == 'dashboard' %} aria-current="page"{% endif %}>My schedule</a>
+        {% endif %}
+        <a class="nav-signout" href="{{ url_for('auth.logout') }}">Sign out</a>
+      {% else %}
+        <a href="{{ url_for('auth.login') }}"{% if active_page == 'login' %} aria-current="page"{% endif %}>Sign in</a>
+        <a href="{{ url_for('auth.register') }}"{% if active_page == 'register' %} aria-current="page"{% endif %}>Create account</a>
+      {% endif %}
+    </nav>
+  </div>
+</header>
+{% macro status_badge(appointment) -%}
+  {% if appointment.status.name == 'ACCEPETED' %}
+  <span class="status status-confirmed">Confirmed</span>
+  {% elif appointment.status.name == 'PENDING' %}
+  <span class="status status-pending">Awaiting reply</span>
+  {% elif appointment.status.name == 'REJECTED' %}
+  <span class="status status-closed">Not accepted</span>
+  {% else %}
+  <span class="status status-closed">Canceled</span>
+  {% endif %}
+{%- endmacro %}
+{% set appointments = schedule.appointments|sort(attribute='start_time') if schedule else [] %}
+{% set confirmed = appointments|selectattr('status.name', 'equalto', 'ACCEPETED')|list %}
+{% set pending = appointments|selectattr('status.name', 'equalto', 'PENDING')|list %}
+<main id="main-content" class="shell dashboard-main" tabindex="-1">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}
+<div class="message-stack" aria-label="Account messages">
+  {% for category, message in messages %}
+  <p class="message{% if category == 'error' %} message-error{% elif category == 'success' %} message-success{% endif %}" role="{{ 'alert' if category == 'error' else 'status' }}">{{ message }}</p>
+  {% endfor %}
+</div>
+{% endif %}
+{% endwith %}
+  <div class="page-heading"><div><p class="eyebrow">Your working day</p><h1>Your schedule, {{ current_user.display_name }}.</h1><p>A clear view of confirmed appointments and requests awaiting your reply.</p></div><span class="view-label">Contractor view</span></div>
+  {% if schedule %}
+  <div class="overview" aria-label="Schedule summary"><div class="overview-item"><span class="overview-value">{{ confirmed|length }}</span><span class="overview-label">confirmed</span></div><div class="overview-item"><span class="overview-value">{{ pending|length }}</span><span class="overview-label">awaiting reply</span></div><div class="overview-item"><span class="overview-value">{{ schedule.max_daily_appointments }}</span><span class="overview-label">daily appointment limit</span></div></div>
+  <div id="booking-calendar" data-schedule-calendar="contractor">
+  <noscript><p class="no-js-note">The interactive calendar needs JavaScript. You can still read the appointment list below.</p></noscript>
+  <div class="schedule-layout" data-calendar-ui hidden>
+    <section class="calendar-panel" aria-label="Your appointment calendar">
+      <div class="panel-topline">
+        <span class="section-label">Your calendar</span>
+        <button class="today-button" type="button" data-calendar-today>Today</button>
+      </div>
+      <div class="calendar-toolbar">
+        <h2 data-month-label></h2>
+        <div class="calendar-controls">
+          <button type="button" class="icon-button" data-month-step="-1" aria-label="Previous month"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 3 5 8l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button type="button" class="icon-button" data-month-step="1" aria-label="Next month"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="m6 3 5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        </div>
+      </div>
+      <div class="calendar-weekdays" aria-hidden="true"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>
+      <p class="sr-only" id="calendar-help">Use the arrow keys to move between days, or use the date field below.</p>
+      <div class="calendar-grid" data-calendar-grid role="group" aria-label="Choose a day" aria-describedby="calendar-help"></div>
+      <p class="calendar-legend"><span class="legend-dot" aria-hidden="true"></span>A dot marks a day with appointments or requests</p>
+      <label class="date-picker-label">Go to a date<input type="date" data-date-picker aria-label="Go to a date"></label>
+    </section>
+    <section class="agenda-panel" aria-labelledby="selected-day">
+      <p class="eyebrow">Selected day</p>
+      <h2 id="selected-day" data-selected-day></h2>
+      <p class="agenda-subtitle" data-day-subtitle></p>
+      <ul class="agenda-list" data-agenda-list></ul>
+      <div class="empty-state" data-agenda-empty>
+        <span class="empty-icon" aria-hidden="true"><svg width="19" height="19" viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="13" rx="2" stroke="currentColor" stroke-width="1.3"/><path d="M3 8h14M7 2v4M13 2v4m-6 6 2 2 4-4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        <h3>A little breathing room.</h3>
+        <p>There are no appointments or pending requests for this date. Choose another day to see your schedule.</p>
+      </div>
+      <p class="agenda-note">Confirmed appointments reserve time. Requests marked “Awaiting reply” are still pending.</p>
+      <p class="sr-only" data-calendar-announcement role="status" aria-live="polite" aria-atomic="true"></p>
+    </section>
+  </div>
+  <section data-calendar-source class="appointments-section" aria-label="All appointments">
+    <h2>All appointments</h2>
+    <ul class="appointment-list">
+      {% for appointment in schedule.appointments|sort(attribute='start_time') %}
+      {% if appointment.status.name in ['ACCEPETED', 'PENDING'] %}
+      <li class="appointment-row" data-start="{{ appointment.start_time.isoformat() }}" data-end="{{ appointment.end_time.isoformat() }}" data-status="{{ appointment.status.name }}" data-name="{{ appointment.customer.display_name if appointment.customer else 'Customer details unavailable' }}">
+        <div class="appointment-main"><strong>{{ appointment.customer.display_name if appointment.customer else 'Customer details unavailable' }}</strong><p>{{ appointment.start_time.strftime('%A, %B %d, %Y') }} · {{ appointment.start_time.strftime('%I:%M %p').lstrip('0') }} – {{ appointment.end_time.strftime('%I:%M %p').lstrip('0') }}</p></div>
+        {{ status_badge(appointment) }}
+      </li>
+      {% endif %}
+      {% endfor %}
+    </ul>
+  </section>
+</div>
+  <section class="appointments-section" aria-labelledby="pending-heading">
+    <div class="section-heading"><div><h2 id="pending-heading">Awaiting your reply</h2><p>These requests haven't been confirmed.</p></div><span class="section-count" aria-label="{{ pending|length }} pending requests">{{ pending|length }}</span></div>
+    {% if pending %}
+    <ul class="appointment-list">
+      {% for appointment in pending %}
+      <li class="appointment-row"><div class="appointment-date" aria-hidden="true"><span>{{ appointment.start_time.strftime('%b') }}</span><strong>{{ appointment.start_time.day }}</strong></div><div class="appointment-main"><strong>{{ appointment.customer.display_name if appointment.customer else 'Customer details unavailable' }}</strong><p>{{ appointment.start_time.strftime('%A, %B %d, %Y') }} · {{ appointment.start_time.strftime('%I:%M %p').lstrip('0') }} – {{ appointment.end_time.strftime('%I:%M %p').lstrip('0') }}</p></div>{{ status_badge(appointment) }}</li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <div class="section-empty"><h3>You're all caught up.</h3><p>There are no pending requests on your schedule. New requests will appear here.</p></div>
+    {% endif %}
+  </section>
+  {% else %}
+  <section class="form-panel schedule-setup" aria-labelledby="setup-heading">
+    <h2 id="setup-heading">Let's set up your schedule.</h2>
+    <p>Choose how many appointments you can take each day.</p>
+    <form class="account-form" action="{{ url_for('contractor.create_schedule') }}" method="post" data-account-form data-submitting-label="Creating your schedule…">
+      <div class="field">
+        <label for="max_daily_appointments">Daily appointment limit</label>
+        <input id="max_daily_appointments" name="max_daily_appointments" type="number" min="1" step="1" value="6" required aria-describedby="daily-limit-hint">
+        <p class="field-hint" id="daily-limit-hint">The most appointments you want to accept in one day. Start with 6, or choose a number that suits you.</p>
+      </div>
+      <button class="button form-submit" type="submit">Create my schedule</button>
+    </form>
+    <p class="form-footer">Already set it up? <a href="{{ url_for('contractor.dashboard') }}">Try loading my schedule again</a></p>
+  </section>
+  {% endif %}
+</main>
+<footer class="site-footer">
+  <div class="shell footer-inner">
+    <span>IT Scheduler</span>
+    <span>Appointments, clearly arranged.</span>
+  </div>
+</footer>
+</body>
+</html>

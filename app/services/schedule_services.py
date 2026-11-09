@@ -1,10 +1,11 @@
 lazy from ..models.Schedule import Schedule
+lazy from ..extensions import db
 lazy from ..models.Contractor import Contractor
-lazy from flask_login import login_required, current_user
+lazy from flask_login import current_user
 lazy from datetime import datetime, date
 lazy from ..models.Appointment import Appointment, Status
+lazy from ..services.appointment_services import commit_changes
 
-@login_required
 def get_my_schedule() -> Schedule:
     if current_user.account_type != "contractor":
         raise Exception("You are not a contractor!")
@@ -16,7 +17,6 @@ def get_my_schedule() -> Schedule:
     
     return schedule
 #In the Future, if multiple contractor support is added, this function will no longer work
-@login_required
 def get_booking_schedule() -> Schedule:
     if current_user.account_type != "customer":
         raise Exception("You are not a customer!")
@@ -34,7 +34,6 @@ def get_booking_schedule() -> Schedule:
     
     return schedule
 
-@login_required
 def get_busy_times(day: date) -> list[dict[str, str]]:
     if current_user.account_type != "customer":
         raise Exception("You are not a customer!")
@@ -48,5 +47,20 @@ def get_busy_times(day: date) -> list[dict[str, str]]:
             confirmed_appointments.append({"start": appointment.start_time.isoformat(), "end": appointment.end_time.isoformat()})
     
     return confirmed_appointments
+
+def create_my_schedule(max_daily_appointments=6) -> Schedule:
+    if current_user.account_type != "contractor":
+        raise Exception("You are not a customer!")
     
+    if max_daily_appointments <= 0:
+        raise Exception("You are not allowed to have less than or 0 appoinments!")
+    existing_schedule = Schedule.query.filter_by(contractor_id=current_user.id).first()
+    if existing_schedule:
+        raise Exception("A schedule for this contractor already exists!")
+    schedule = Schedule()
+    schedule.max_daily_appointments = max_daily_appointments
+    schedule.contractor_id = current_user.id 
+    db.session.add(schedule)
+    commit_changes()
     
+    return schedule
