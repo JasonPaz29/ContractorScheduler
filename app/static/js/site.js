@@ -20,12 +20,12 @@
     });
   });
 
-  document.querySelectorAll("[data-account-form]").forEach((form) => {
+  document.querySelectorAll("[data-account-form], [data-appointment-form], [data-action-form]").forEach((form) => {
     const button = form.querySelector("[type=submit]");
-    const defaultLabel = button.textContent.trim();
+    const defaultContent = button.cloneNode(true);
     const restore = () => {
       button.disabled = false;
-      button.textContent = defaultLabel;
+      button.replaceChildren(...Array.from(defaultContent.childNodes, (node) => node.cloneNode(true)));
       form.removeAttribute("aria-busy");
     };
     window.addEventListener("pageshow", restore);
@@ -44,6 +44,19 @@
         firstInvalid.focus();
         return;
       }
+      if (form.matches("[data-appointment-form]")) {
+        const start = form.elements.namedItem("start_time");
+        const end = form.elements.namedItem("end_time");
+        const error = form.querySelector("[data-time-error]");
+        if (end.value <= start.value) {
+          event.preventDefault();
+          error.textContent = "Choose an end time after the start time.";
+          error.hidden = false;
+          end.setAttribute("aria-invalid", "true");
+          end.focus();
+          return;
+        }
+      }
       if (event.defaultPrevented) return;
       form.setAttribute("aria-busy", "true");
       button.textContent = form.dataset.submittingLabel;
@@ -54,7 +67,18 @@
         input.removeAttribute("aria-invalid");
         const error = document.getElementById(`${input.id}-error`);
         if (error) error.hidden = true;
+        const timeError = form.querySelector("[data-time-error]");
+        if (timeError) timeError.hidden = true;
+        form.querySelectorAll('[aria-invalid="true"]').forEach((field) => field.removeAttribute("aria-invalid"));
       });
+    });
+  });
+
+  document.querySelectorAll("[data-close-action]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const details = button.closest("details");
+      details.open = false;
+      details.querySelector("summary").focus();
     });
   });
 
@@ -71,6 +95,7 @@
       end: new Date(item.dataset.end),
       name: item.dataset.name ?? "",
       status: item.dataset.status ?? "ACCEPETED",
+      manageHref: item.dataset.manageHref ?? "",
     })).filter((event) => !Number.isNaN(event.start.getTime()) && !Number.isNaN(event.end.getTime()));
     const grid = calendar.querySelector("[data-calendar-grid]");
     const heading = calendar.querySelector("[data-month-label]");
@@ -111,6 +136,13 @@
           name.className = "agenda-name";
           name.textContent = event.name;
           detail.append(name);
+        }
+        if (mode === "contractor" && event.manageHref.startsWith("#contractor-appointment-")) {
+          const manage = document.createElement("a");
+          manage.className = "text-link";
+          manage.href = event.manageHref;
+          manage.textContent = "Manage appointment";
+          detail.append(manage);
         }
         if (localKey(event.start) !== localKey(event.end)) {
           const dates = document.createElement("p");

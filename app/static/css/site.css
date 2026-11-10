@@ -195,6 +195,25 @@ svg { display: block; }
 .schedule-unavailable { padding: 32px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); max-width: 700px; }
 .schedule-unavailable p { color: var(--muted); margin: 16px 0 22px; }
 .schedule-setup { max-width: 700px; }
+.request-panel { margin-bottom: 28px; }
+.time-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.time-fields .field { min-width: 0; }
+.time-fields input { min-width: 0; max-width: 100%; }
+.form-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.button-small { min-height: 44px; padding: 10px 15px; font-size: .82rem; gap: 6px; }
+.button-danger { background: var(--error); border-color: var(--error); }
+.button-danger:hover { background: #6b2521; border-color: #6b2521; }
+.appointment-entry { flex-wrap: wrap; scroll-margin-top: 24px; }
+.appointment-actions { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 10px; margin-left: 68px; }
+.appointment-action { min-width: 0; }
+.appointment-action > summary { list-style: none; cursor: pointer; }
+.appointment-action > summary::-webkit-details-marker { display: none; }
+.appointment-action[open] { flex-basis: 100%; }
+.appointment-action[open] > summary { background: var(--accent-soft); border-color: #c9b09d; color: var(--ink); }
+.action-form { border-top: 1px solid var(--line); margin-top: 14px; padding-top: 16px; display: grid; gap: 16px; max-width: 760px; }
+.action-hint { color: var(--muted); font-size: .85rem; }
+.action-form .field-error { margin-top: 0; }
+.agenda-item .text-link { font-size: .78rem; margin-top: 4px; }
 .no-js-note { background: var(--ochre); color: var(--ochre-ink); border-radius: 7px; padding: 12px; font-size: .85rem; margin-bottom: 16px; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 
@@ -262,6 +281,9 @@ svg { display: block; }
   .filter-tabs { gap: 2px; }
   .filter-tabs button { padding-inline: 10px; font-size: .75rem; }
   .schedule-unavailable { padding: 24px; }
+  .time-fields { grid-template-columns: 1fr; }
+  .appointment-actions { margin-left: 0; }
+  .request-panel .form-actions .button { width: 100%; }
 }
 @media (max-width: 360px) {
   .brand-caption { display: none; }

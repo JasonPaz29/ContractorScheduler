@@ -94,6 +94,13 @@ class FrontendTests(unittest.TestCase):
         self.assertEqual(
             {rule.rule for rule in self.app.url_map.iter_rules()},
             {"/", "/auth/login", "/auth/register", "/auth/logout",
+             "/customer/create_appointment/<int:contractor_id>",
+             "/customer/cancel_appointment/<int:appointment_id>",
+             "/customer/reschedule_appointment/<int:appointment_id>",
+             "/contractor/confirm_appointment/<int:appointment_id>",
+             "/contractor/reject_appointment/<int:appointment_id>",
+             "/contractor/reschedule_appointment/<int:appointment_id>",
+             "/contractor/cancel_appointment/<int:appointment_id>",
              "/customer/dashboard", "/contractor/dashboard", "/contractor/schedule", "/static/<path:filename>"},
         )
 

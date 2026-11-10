@@ -45,6 +45,49 @@
   <span class="status status-closed">Canceled</span>
   {% endif %}
 {%- endmacro %}
+{% macro appointment_actions(appointment) -%}
+  <div class="appointment-actions" aria-label="Actions for {{ appointment.customer.display_name if appointment.customer else 'customer' }} on {{ appointment.start_time.strftime('%B %d at %I:%M %p') }}">
+    {% if appointment.status.name == 'PENDING' %}
+    <form action="{{ url_for('contractor.confirm_appointment', appointment_id=appointment.id) }}" method="post" data-action-form data-submitting-label="Confirming…"><button class="button button-small" type="submit">Confirm request<span class="sr-only"> for {{ appointment.customer.display_name if appointment.customer else 'customer' }} on {{ appointment.start_time.strftime('%B %d at %I:%M %p') }}</span></button></form>
+    <details class="appointment-action">
+      <summary class="button button-secondary button-small">Decline request<span class="sr-only"> for {{ appointment.customer.display_name if appointment.customer else 'customer' }} on {{ appointment.start_time.strftime('%B %d at %I:%M %p') }}</span></summary>
+      <form class="action-form" action="{{ url_for('contractor.reject_appointment', appointment_id=appointment.id) }}" method="post" data-action-form data-submitting-label="Declining…">
+        <p class="action-hint">Decline this request? The customer will see it as “Not accepted.”</p>
+        <div class="form-actions"><button class="button button-danger button-small" type="submit">Yes, decline request</button><button class="button button-secondary button-small" type="button" data-close-action>Keep request</button></div>
+      </form>
+    </details>
+    {% endif %}
+    <details class="appointment-action">
+      <summary class="button button-secondary button-small">Reschedule<span class="sr-only"> for {{ appointment.customer.display_name if appointment.customer else 'customer' }} on {{ appointment.start_time.strftime('%B %d at %I:%M %p') }}</span></summary>
+      <form class="action-form" action="{{ url_for('contractor.reschedule_appointment', appointment_id=appointment.id) }}" method="post" data-appointment-form data-submitting-label="Saving new times…">
+        <p class="action-hint">Choose new times. The appointment keeps its current confirmation status.</p>
+        <div class="time-fields">
+          <div class="field"><label for="contractor-start-{{ appointment.id }}">New start</label><input id="contractor-start-{{ appointment.id }}" name="start_time" type="datetime-local" step="60" value="{{ appointment.start_time.strftime('%Y-%m-%dT%H:%M') }}" required></div>
+          <div class="field"><label for="contractor-end-{{ appointment.id }}">New end</label><input id="contractor-end-{{ appointment.id }}" name="end_time" type="datetime-local" step="60" value="{{ appointment.end_time.strftime('%Y-%m-%dT%H:%M') }}" required></div>
+        </div>
+        <p class="field-error" role="alert" data-time-error hidden></p>
+        <div class="form-actions"><button class="button button-small" type="submit">Save new times</button><button class="button button-secondary button-small" type="button" data-close-action>Keep current times</button></div>
+      </form>
+    </details>
+    {% if appointment.status.name == 'ACCEPETED' %}
+    <details class="appointment-action">
+      <summary class="button button-secondary button-small">Cancel appointment<span class="sr-only"> for {{ appointment.customer.display_name if appointment.customer else 'customer' }} on {{ appointment.start_time.strftime('%B %d at %I:%M %p') }}</span></summary>
+      <form class="action-form" action="{{ url_for('contractor.cancel_appointment', appointment_id=appointment.id) }}" method="post" data-action-form data-submitting-label="Canceling…">
+        <p class="action-hint">Cancel this appointment? It will be marked as canceled for you and the customer.</p>
+        <div class="form-actions"><button class="button button-danger button-small" type="submit">Yes, cancel appointment</button><button class="button button-secondary button-small" type="button" data-close-action>Keep appointment</button></div>
+      </form>
+    </details>
+    {% endif %}
+  </div>
+{%- endmacro %}
+{% macro appointment_row(appointment) -%}
+  <li class="appointment-row appointment-entry" id="contractor-appointment-{{ appointment.id }}">
+    <div class="appointment-date" aria-hidden="true"><span>{{ appointment.start_time.strftime('%b') }}</span><strong>{{ appointment.start_time.day }}</strong></div>
+    <div class="appointment-main"><strong>{{ appointment.customer.display_name if appointment.customer else 'Customer details unavailable' }}</strong><p>{{ appointment.start_time.strftime('%A, %B %d, %Y') }} · {{ appointment.start_time.strftime('%I:%M %p').lstrip('0') }} – {{ appointment.end_time.strftime('%I:%M %p').lstrip('0') }}{% if appointment.start_time.date() != appointment.end_time.date() %} · Ends {{ appointment.end_time.strftime('%B %d, %Y') }}{% endif %}</p></div>
+    {{ status_badge(appointment) }}
+    {{ appointment_actions(appointment) }}
+  </li>
+{%- endmacro %}
 {% set appointments = schedule.appointments|sort(attribute='start_time') if schedule else [] %}
 {% set confirmed = appointments|selectattr('status.name', 'equalto', 'ACCEPETED')|list %}
 {% set pending = appointments|selectattr('status.name', 'equalto', 'PENDING')|list %}
@@ -101,7 +144,7 @@
     <ul class="appointment-list">
       {% for appointment in schedule.appointments|sort(attribute='start_time') %}
       {% if appointment.status.name in ['ACCEPETED', 'PENDING'] %}
-      <li class="appointment-row" data-start="{{ appointment.start_time.isoformat() }}" data-end="{{ appointment.end_time.isoformat() }}" data-status="{{ appointment.status.name }}" data-name="{{ appointment.customer.display_name if appointment.customer else 'Customer details unavailable' }}">
+      <li class="appointment-row" data-start="{{ appointment.start_time.isoformat() }}" data-end="{{ appointment.end_time.isoformat() }}" data-status="{{ appointment.status.name }}" data-name="{{ appointment.customer.display_name if appointment.customer else 'Customer details unavailable' }}" data-manage-href="#contractor-appointment-{{ appointment.id }}">
         <div class="appointment-main"><strong>{{ appointment.customer.display_name if appointment.customer else 'Customer details unavailable' }}</strong><p>{{ appointment.start_time.strftime('%A, %B %d, %Y') }} · {{ appointment.start_time.strftime('%I:%M %p').lstrip('0') }} – {{ appointment.end_time.strftime('%I:%M %p').lstrip('0') }}</p></div>
         {{ status_badge(appointment) }}
       </li>
@@ -115,11 +158,23 @@
     {% if pending %}
     <ul class="appointment-list">
       {% for appointment in pending %}
-      <li class="appointment-row"><div class="appointment-date" aria-hidden="true"><span>{{ appointment.start_time.strftime('%b') }}</span><strong>{{ appointment.start_time.day }}</strong></div><div class="appointment-main"><strong>{{ appointment.customer.display_name if appointment.customer else 'Customer details unavailable' }}</strong><p>{{ appointment.start_time.strftime('%A, %B %d, %Y') }} · {{ appointment.start_time.strftime('%I:%M %p').lstrip('0') }} – {{ appointment.end_time.strftime('%I:%M %p').lstrip('0') }}</p></div>{{ status_badge(appointment) }}</li>
+      {{ appointment_row(appointment) }}
       {% endfor %}
     </ul>
     {% else %}
     <div class="section-empty"><h3>You're all caught up.</h3><p>There are no pending requests on your schedule. New requests will appear here.</p></div>
+    {% endif %}
+  </section>
+  <section class="appointments-section" aria-labelledby="confirmed-heading">
+    <div class="section-heading"><div><h2 id="confirmed-heading">Confirmed appointments</h2><p>Manage times or cancel an appointment when plans change.</p></div><span class="section-count" aria-label="{{ confirmed|length }} confirmed appointments">{{ confirmed|length }}</span></div>
+    {% if confirmed %}
+    <ul class="appointment-list">
+      {% for appointment in confirmed %}
+      {{ appointment_row(appointment) }}
+      {% endfor %}
+    </ul>
+    {% else %}
+    <div class="section-empty"><h3>No confirmed appointments yet.</h3><p>Confirm a request above to add it to your schedule.</p></div>
     {% endif %}
   </section>
   {% else %}

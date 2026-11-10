@@ -35,7 +35,7 @@ def cancel_appointment(appointment: Appointment) -> bool:
         commit_changes()
         return True
     except ValueError as e:
-        flash(f"An Error occured:{e}")
+        flash(str(e), "error")
         return False
     
 def confirm_appointment(appointment: Appointment) -> bool:
@@ -44,7 +44,7 @@ def confirm_appointment(appointment: Appointment) -> bool:
     if not current_user.confirm_appointment(appointment):
         return False
     commit_changes()
-    flash("The appointment was confirmed!")
+    flash("The appointment was confirmed!", "success")
     return True
     
 def get_appointments_for_day(day: date) -> list[Appointment]:
@@ -58,7 +58,7 @@ def reject_appointment(appointment: Appointment) -> bool:
     if not current_user.reject_appointment(appointment):
         return False
     commit_changes()
-    flash("The appointment was rejected!")
+    flash("The appointment was rejected!", "success")
     return True
 
 def reschedule_appointment(appointment: Appointment, new_start: datetime, new_end: datetime) -> bool:
@@ -77,6 +77,9 @@ def reschedule_appointment(appointment: Appointment, new_start: datetime, new_en
         if current_user.id is None or current_user.id != owner_id:
             raise ValueError("This appointment does not belong to you.")
 
+        if appointment.status not in (Status.PENDING, Status.ACCEPETED):
+            raise ValueError("Only pending or confirmed appointments can be rescheduled.")
+
         appointment.check_start_end_time(new_start, new_end)
         # Check the proposed slot before changing the saved appointment.
         proposed = Appointment()
@@ -91,7 +94,7 @@ def reschedule_appointment(appointment: Appointment, new_start: datetime, new_en
         commit_changes()
         return True
     except ValueError as e:
-        flash(f"An Error occured: {e}")
+        flash(str(e), "error")
         return False
 
 def get_appointment(appointment_id: int) -> Appointment:

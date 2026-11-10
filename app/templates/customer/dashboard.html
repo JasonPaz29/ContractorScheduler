@@ -45,6 +45,31 @@
   <span class="status status-closed">Canceled</span>
   {% endif %}
 {%- endmacro %}
+{% macro appointment_actions(appointment) -%}
+  {% if appointment.status.name in ['ACCEPETED', 'PENDING'] %}
+  <div class="appointment-actions" aria-label="Actions for appointment on {{ appointment.start_time.strftime('%B %d, %Y at %I:%M %p') }}">
+    <details class="appointment-action">
+      <summary class="button button-secondary button-small">Reschedule<span class="sr-only"> appointment on {{ appointment.start_time.strftime('%B %d at %I:%M %p') }}</span></summary>
+      <form class="action-form" action="{{ url_for('customer.reschedule_appointment', appointment_id=appointment.id) }}" method="post" data-appointment-form data-submitting-label="Saving new times…">
+        <p class="action-hint">Choose new times. Your appointment keeps its current confirmation status.</p>
+        <div class="time-fields">
+          <div class="field"><label for="customer-start-{{ appointment.id }}">New start</label><input id="customer-start-{{ appointment.id }}" name="start_time" type="datetime-local" step="60" value="{{ appointment.start_time.strftime('%Y-%m-%dT%H:%M') }}" required></div>
+          <div class="field"><label for="customer-end-{{ appointment.id }}">New end</label><input id="customer-end-{{ appointment.id }}" name="end_time" type="datetime-local" step="60" value="{{ appointment.end_time.strftime('%Y-%m-%dT%H:%M') }}" required></div>
+        </div>
+        <p class="field-error" role="alert" data-time-error hidden></p>
+        <div class="form-actions"><button class="button button-small" type="submit">Save new times</button><button class="button button-secondary button-small" type="button" data-close-action>Keep current times</button></div>
+      </form>
+    </details>
+    <details class="appointment-action">
+      <summary class="button button-secondary button-small">Cancel appointment<span class="sr-only"> on {{ appointment.start_time.strftime('%B %d at %I:%M %p') }}</span></summary>
+      <form class="action-form" action="{{ url_for('customer.cancel_appointment', appointment_id=appointment.id) }}" method="post" data-action-form data-submitting-label="Canceling…">
+        <p class="action-hint">Cancel this appointment? It will be marked as canceled on your schedule.</p>
+        <div class="form-actions"><button class="button button-danger button-small" type="submit">Yes, cancel appointment</button><button class="button button-secondary button-small" type="button" data-close-action>Keep appointment</button></div>
+      </form>
+    </details>
+  </div>
+  {% endif %}
+{%- endmacro %}
 {% set own_appointments = current_user.appointments|sort(attribute='start_time') %}
 {% set confirmed = own_appointments|selectattr('status.name', 'equalto', 'ACCEPETED')|list %}
 {% set pending = own_appointments|selectattr('status.name', 'equalto', 'PENDING')|list %}
@@ -61,6 +86,18 @@
   <div class="page-heading"><div><p class="eyebrow">Your schedule</p><h1>Hello, {{ current_user.display_name }}.</h1><p>Check booked times and keep track of your own appointments.</p></div><span class="view-label">Customer view</span></div>
   <div class="overview" aria-label="Your appointment summary"><div class="overview-item"><span class="overview-value">{{ confirmed|length }}</span><span class="overview-label">confirmed</span></div><div class="overview-item"><span class="overview-value">{{ pending|length }}</span><span class="overview-label">awaiting reply</span></div><div class="overview-item"><span class="overview-value">{{ own_appointments|length }}</span><span class="overview-label">appointments in total</span></div></div>
   {% if schedule %}
+  <section class="form-panel request-panel" id="request-appointment" aria-labelledby="request-heading">
+    <h2 id="request-heading">Request an appointment</h2>
+    <p>Choose your start and end time. Your contractor will review the request before confirming it.</p>
+    <form class="account-form" action="{{ url_for('customer.create_appointment', contractor_id=schedule.contractor_id) }}" method="post" data-appointment-form data-new-appointment data-submitting-label="Sending your request…">
+      <div class="time-fields">
+        <div class="field"><label for="request-start">Start date and time</label><input id="request-start" name="start_time" type="datetime-local" step="60" required></div>
+        <div class="field"><label for="request-end">End date and time</label><input id="request-end" name="end_time" type="datetime-local" step="60" required></div>
+      </div>
+      <p class="field-error" role="alert" data-time-error hidden></p>
+      <div class="form-actions"><button class="button" type="submit">Send appointment request</button><a class="text-link" href="#booking-calendar">Check booked times</a></div>
+    </form>
+  </section>
   <div id="booking-calendar" data-schedule-calendar="customer">
   <noscript><p class="no-js-note">The interactive calendar needs JavaScript. You can still read the appointment list below.</p></noscript>
   <div class="schedule-layout" data-calendar-ui hidden>
@@ -93,6 +130,7 @@
         <p>There are no confirmed bookings listed for this date. Choose another day to see its booked times.</p>
       </div>
       <p class="agenda-note">A date with no bookings is not a confirmed appointment. Your contractor confirms each appointment.</p>
+      <a class="text-link" href="#request-appointment">Request an appointment</a>
       <p class="sr-only" data-calendar-announcement role="status" aria-live="polite" aria-atomic="true"></p>
     </section>
   </div>
@@ -119,7 +157,12 @@
     <div class="filter-tabs" role="group" aria-label="Filter your appointments"><button type="button" data-appointment-filter="all" aria-pressed="true">All</button><button type="button" data-appointment-filter="ACCEPETED" aria-pressed="false">Confirmed</button><button type="button" data-appointment-filter="PENDING" aria-pressed="false">Awaiting reply</button><button type="button" data-appointment-filter="closed" aria-pressed="false">Closed</button></div>
     <ul class="appointment-list">
       {% for appointment in own_appointments %}
-      <li class="appointment-row" data-appointment-status="{{ appointment.status.name }}"><div class="appointment-date" aria-hidden="true"><span>{{ appointment.start_time.strftime('%b') }}</span><strong>{{ appointment.start_time.day }}</strong></div><div class="appointment-main"><strong>{{ appointment.start_time.strftime('%A, %B %d, %Y') }}</strong><p>{{ appointment.start_time.strftime('%I:%M %p').lstrip('0') }} – {{ appointment.end_time.strftime('%I:%M %p').lstrip('0') }}{% if appointment.start_time.date() != appointment.end_time.date() %} · Ends {{ appointment.end_time.strftime('%B %d, %Y') }}{% endif %}</p></div>{{ status_badge(appointment) }}</li>
+      <li class="appointment-row appointment-entry" id="customer-appointment-{{ appointment.id }}" data-appointment-status="{{ appointment.status.name }}">
+        <div class="appointment-date" aria-hidden="true"><span>{{ appointment.start_time.strftime('%b') }}</span><strong>{{ appointment.start_time.day }}</strong></div>
+        <div class="appointment-main"><strong>{{ appointment.start_time.strftime('%A, %B %d, %Y') }}</strong><p>{{ appointment.start_time.strftime('%I:%M %p').lstrip('0') }} – {{ appointment.end_time.strftime('%I:%M %p').lstrip('0') }}{% if appointment.start_time.date() != appointment.end_time.date() %} · Ends {{ appointment.end_time.strftime('%B %d, %Y') }}{% endif %}</p></div>
+        {{ status_badge(appointment) }}
+        {{ appointment_actions(appointment) }}
+      </li>
       {% endfor %}
     </ul>
     <div class="section-empty" data-filter-empty hidden><h3>No appointments in this view.</h3><p>Choose another filter to see your other appointments.</p></div>
