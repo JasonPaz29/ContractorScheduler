@@ -46,7 +46,7 @@ class AppointmentRouteTests(unittest.TestCase):
 
     def login(self, client, username):
         client.get("/auth/logout")
-        client.post("/auth/login", data={"username": username, "password": PREVIEW_PASSWORD})
+        client.post("/auth/login", data={"identifier": username, "password": PREVIEW_PASSWORD})
 
     def times(self, start=None, end=None):
         start = start or self.start
@@ -163,7 +163,7 @@ class AppointmentRouteTests(unittest.TestCase):
             self.assertEqual(self.post(self.customer, f"/customer/{action}_appointment/{appointment_id}", self.times())[0], "error")
             self.assertEqual(self.snapshot(appointment_id), original)
         with self.app.app_context():
-            other = Contractor("Other Contractor", "other_contractor", PREVIEW_PASSWORD)
+            other = Contractor("Other Contractor", "other_contractor", "other_contractor@example.com", PREVIEW_PASSWORD)
             db.session.add(Schedule(contractor=other))
             db.session.commit()
         self.login(self.contractor, "other_contractor")

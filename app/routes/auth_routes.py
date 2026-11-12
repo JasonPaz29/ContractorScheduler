@@ -37,17 +37,19 @@ def register():
     if request.method == "POST":
         display_name = request.form.get("display_name", "").strip()
         username = request.form.get("username", "").strip()
+        email = request.form.get("email", "").strip()
         password = request.form.get("password", "")
-        form_values = {"display_name": display_name, "username": username}
+        form_values = {"display_name": display_name, "username": username, "email": email}
         try:
-            if not display_name or not username or not password.strip():
-                raise ValueError("Please fill in your name, username, and password.")
+            if not display_name or not username or not email or not password.strip():
+                raise ValueError("Please fill in your name, username, email, and password.")
             if len(display_name) > 155 or len(username) > 200:
                 raise ValueError("Please shorten your name or username and try again.")
             # Public registration creates customers; contractor setup stays separate.
             register_service(
                 display_name=display_name,
                 username=username,
+                email=email,
                 password=password,
                 choice="1",
             )
@@ -70,17 +72,17 @@ def login():
 
     form_values = {}
     if request.method == "POST":
-        username = request.form.get("username", "").strip()
+        identifier = request.form.get("identifier", "").strip()
         password = request.form.get("password", "")
-        form_values = {"username": username}
+        form_values = {"identifier": identifier}
         try:
-            if not username or not password.strip():
-                raise ValueError("Please enter your username and password.")
-            login_service(username=username, password=password)
+            if not identifier or not password.strip():
+                raise ValueError("Please enter your username or email and password.")
+            login_service(identifier=identifier, password=password)
         except SQLAlchemyError:
             flash("Sign in is unavailable right now. Please try again.", "error")
         except Exception:
-            flash("The username or password is incorrect. Please try again.", "error")
+            flash("The username/email or password is incorrect. Please try again.", "error")
         else:
             return redirect(_dashboard_url())
         return render_template("auth/login.html", form_values=form_values), 400

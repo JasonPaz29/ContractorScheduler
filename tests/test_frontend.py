@@ -27,10 +27,10 @@ def make_frontend_test_app():
     )
     with app.app_context():
         db.create_all()
-        customer = Customer("Alex Morgan", "alex", PREVIEW_PASSWORD)
-        contractor = Contractor("Sam Taylor", "sam", PREVIEW_PASSWORD)
-        other_customer = Customer("Nina Patel", "private_customer", PREVIEW_PASSWORD)
-        empty_customer = Customer("Robin Lee", "robin", PREVIEW_PASSWORD)
+        customer = Customer("Alex Morgan", "alex", "alex@example.com", PREVIEW_PASSWORD)
+        contractor = Contractor("Sam Taylor", "sam", "sam@example.com", PREVIEW_PASSWORD)
+        other_customer = Customer("Nina Patel", "private_customer", "private_customer@example.com", PREVIEW_PASSWORD)
+        empty_customer = Customer("Robin Lee", "robin", "robin@example.com", PREVIEW_PASSWORD)
         schedule = Schedule(contractor=contractor)
         db.session.add_all([customer, contractor, other_customer, empty_customer, schedule])
         db.session.flush()
@@ -68,9 +68,9 @@ class FrontendTests(unittest.TestCase):
             db.drop_all()
             db.engine.dispose()
 
-    def sign_in(self, username):
+    def sign_in(self, identifier):
         return self.client.post(
-            "/auth/login", data={"username": username, "password": PREVIEW_PASSWORD}
+            "/auth/login", data={"identifier": identifier, "password": PREVIEW_PASSWORD}
         )
 
     def test_only_referenced_html_templates_exist(self):
@@ -110,10 +110,12 @@ class FrontendTests(unittest.TestCase):
                 with self.client.get(url) as response:
                     self.assertEqual(response.status_code, 200)
         self.assertIn(b'for="display_name"', self.client.get("/auth/register").data)
+        self.assertIn(b'name="email" type="email"', self.client.get("/auth/register").data)
+        self.assertIn(b'name="identifier"', self.client.get("/auth/login").data)
 
-    def test_failed_login_renders_error_and_preserves_username_only(self):
+    def test_failed_login_renders_error_and_preserves_identifier_only(self):
         response = self.client.post(
-            "/auth/login", data={"username": "alex", "password": "wrong-password-sentinel"}
+            "/auth/login", data={"identifier": "alex", "password": "wrong-password-sentinel"}
         )
         self.assertEqual(response.status_code, 400)
         self.assertIn(b'role="alert"', response.data)
@@ -122,7 +124,7 @@ class FrontendTests(unittest.TestCase):
 
     def test_signup_creates_customer_and_success_feedback(self):
         response = self.client.post("/auth/register", data={
-            "display_name": "New Customer", "username": "new_customer", "password": PREVIEW_PASSWORD,
+            "display_name": "New Customer", "username": "new_customer", "email": "new_customer@EXAMPLE.COM", "password": PREVIEW_PASSWORD,
         }, follow_redirects=True)
         self.assertEqual(response.status_code, 200)
         self.assertIn(b"Your account is ready", response.data)
@@ -130,17 +132,55 @@ class FrontendTests(unittest.TestCase):
             user = User.query.filter_by(username="new_customer").one()
             self.assertIsInstance(user, Customer)
             self.assertEqual(user.display_name, "New Customer")
+            self.assertEqual(user.email, "new_customer@example.com")
 
     def test_duplicate_and_missing_registration_fields_render_errors(self):
         for data in [
-            {"display_name": "Alex", "username": "alex", "password": PREVIEW_PASSWORD},
-            {"username": "missing_name", "password": PREVIEW_PASSWORD},
+            {"display_name": "Alex", "username": "alex", "email": "different@example.com", "password": PREVIEW_PASSWORD},
+            {"username": "missing_name", "email": "missing_name@example.com", "password": PREVIEW_PASSWORD},
         ]:
             with self.subTest(data=data["username"]):
                 response = self.client.post("/auth/register", data=data)
                 self.assertEqual(response.status_code, 400)
                 self.assertIn(b'role="alert"', response.data)
                 self.assertNotIn(PREVIEW_PASSWORD.encode(), response.data)
+
+    def test_email_registration_errors_preserve_safe_values(self):
+        for email in ("alex@example.com", "invalid-email", ""):
+            with self.subTest(email=email):
+                response = self.client.post("/auth/register", data={
+                    "display_name": "Email Customer", "username": "email_customer",
+                    "email": email, "password": PREVIEW_PASSWORD,
+                })
+                self.assertEqual(response.status_code, 400)
+                self.assertIn(b'role="alert"', response.data)
+                self.assertIn(f'value="{email}"'.encode(), response.data)
+                self.assertIn(b'value="email_customer"', response.data)
+                self.assertNotIn(PREVIEW_PASSWORD.encode(), response.data)
+        with self.app.app_context():
+            self.assertIsNone(User.query.filter_by(username="email_customer").first())
+
+    def test_username_and_email_login_require_correct_password(self):
+        for identifier in ("alex", "alex@example.com", "alex@EXAMPLE.COM"):
+            with self.subTest(identifier=identifier):
+                response = self.client.post("/auth/login", data={
+                    "identifier": identifier, "password": "wrong-password-sentinel",
+                })
+                self.assertEqual(response.status_code, 400)
+                self.assertIn(f'value="{identifier}"'.encode(), response.data)
+                with self.client.session_transaction() as session:
+                    self.assertNotIn("_user_id", session)
+                self.assertEqual(self.sign_in(identifier).location, "/customer/dashboard")
+                self.client.get("/auth/logout")
+
+    def test_ambiguous_identifier_does_not_authenticate(self):
+        with self.app.app_context():
+            db.session.add(Customer("Other Alex", "alex@example.com", "other_alex@example.com", PREVIEW_PASSWORD))
+            db.session.commit()
+        response = self.sign_in("alex@example.com")
+        self.assertEqual(response.status_code, 400)
+        with self.client.session_transaction() as session:
+            self.assertNotIn("_user_id", session)
 
     def test_dashboard_login_guards_and_role_redirects(self):
         for url in ("/customer/dashboard", "/contractor/dashboard", "/auth/logout"):

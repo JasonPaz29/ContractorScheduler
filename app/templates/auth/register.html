@@ -44,7 +44,7 @@
     </section>
     <section class="form-panel" aria-labelledby="form-heading">
       <h2 id="form-heading">Create your account</h2>
-      <p>All three fields are required.</p>
+      <p>All fields are required.</p>
       {% with messages = get_flashed_messages(with_categories=true) %}
 {% if messages %}
 <div class="message-stack" aria-label="Account messages">
@@ -56,7 +56,8 @@
 {% endwith %}
       <form class="account-form" method="post" action="{{ url_for('auth.register') }}" data-account-form data-submitting-label="Creating your account…">
         <div class="field"><label for="display_name">Your name</label><input id="display_name" name="display_name" type="text" autocomplete="name" maxlength="155" required value="{{ form_values.get('display_name', '') if form_values is defined else '' }}" aria-describedby="display_name-hint display_name-error"><p class="field-hint" id="display_name-hint">The name you'd like us to use for your appointments.</p><p class="field-error" id="display_name-error" hidden>Please enter your name.</p></div>
-        <div class="field"><label for="username">Choose a username</label><input id="username" name="username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="200" required value="{{ form_values.get('username', '') if form_values is defined else '' }}" aria-describedby="username-hint username-error"><p class="field-hint" id="username-hint">You'll use this to sign in. Choose something you can remember.</p><p class="field-error" id="username-error" hidden>Please choose a username.</p></div>
+        <div class="field"><label for="username">Choose a username</label><input id="username" name="username" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="200" required value="{{ form_values.get('username', '') if form_values is defined else '' }}" aria-describedby="username-hint username-error"><p class="field-hint" id="username-hint">You can sign in with this username or your email address.</p><p class="field-error" id="username-error" hidden>Please choose a username.</p></div>
+        <div class="field"><label for="email">Email address</label><input id="email" name="email" type="email" autocomplete="email" autocapitalize="none" spellcheck="false" maxlength="254" required value="{{ form_values.get('email', '') if form_values is defined else '' }}" aria-describedby="email-hint email-error"><p class="field-hint" id="email-hint">Use an address you can access. You can also use it to sign in.</p><p class="field-error" id="email-error" hidden>Please enter your email address.</p></div>
         <div class="field"><label for="password">Choose a password</label><div class="password-field"><input id="password" name="password" type="password" autocomplete="new-password" required aria-describedby="password-hint password-error"><button type="button" class="password-toggle" data-password-toggle="password" aria-label="Show password" aria-controls="password" aria-pressed="false">Show</button></div><p class="field-hint" id="password-hint">Use a password you don't use for another account.</p><p class="field-error" id="password-error" hidden>Please choose a password.</p></div>
         <button class="button form-submit" type="submit">Create my account</button>
       </form>

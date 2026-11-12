@@ -2,8 +2,17 @@ lazy from ..models.Appointment import Appointment, Status
 lazy from flask_login import current_user
 lazy from datetime import datetime, date
 lazy from ..models.Schedule import Schedule
-lazy from flask import flash
+lazy from ..models.Contractor import Contractor
+lazy from ..models.Customer import Customer
+lazy from flask import flash, current_app
 lazy from ..extensions import db
+lazy from .email_services import (
+    send_new_request_email,
+    send_rejection_email,
+    send_confirmation_email,
+    send_cancellation_email,
+    send_reschedule_email,
+)
 
 #TODO Add Emails to confirmation, Rejection, Cancellation (only if Appointment is confirmed)
 
@@ -24,6 +33,9 @@ def create_appointment(start_time: datetime, end_time: datetime, schedule: Sched
         raise Exception("This appointment conflicts with another appointment!")
     db.session.add(appointment)
     commit_changes()
+    sent, email_message = send_new_request_email(appointment)
+    if not sent:
+        current_app.logger.warning(email_message)
     return appointment
 
 def cancel_appointment(appointment: Appointment) -> bool:
@@ -33,10 +45,24 @@ def cancel_appointment(appointment: Appointment) -> bool:
     try:
         current_user.cancel_appointment(appointment)
         commit_changes()
-        return True
     except ValueError as e:
         flash(str(e), "error")
         return False
+    
+    try:
+        if current_user.account_type == "customer":
+            recipient = db.session.get(Contractor, appointment.schedule.contractor_id)
+        else:
+            recipient = db.session.get(Customer, appointment.customer_id)
+        if not recipient:
+            raise Exception("There was no recipient to send the amil too")
+        sent, email_message = send_cancellation_email(appointment, recipient)
+        if not sent:
+            current_app.logger.warning(email_message)
+    except Exception:
+        current_app.logger.exception("The appointment was cancelled, but the email wasn't")
+    
+    return True
     
 def confirm_appointment(appointment: Appointment) -> bool:
     if current_user.account_type != "contractor":
@@ -44,6 +70,9 @@ def confirm_appointment(appointment: Appointment) -> bool:
     if not current_user.confirm_appointment(appointment):
         return False
     commit_changes()
+    sent, email_message = send_confirmation_email(appointment)
+    if not sent:
+        current_app.logger.warning(email_message)
     flash("The appointment was confirmed!", "success")
     return True
     
@@ -58,6 +87,9 @@ def reject_appointment(appointment: Appointment) -> bool:
     if not current_user.reject_appointment(appointment):
         return False
     commit_changes()
+    sent, email_message = send_rejection_email(appointment)
+    if not sent:
+        current_app.logger.warning(email_message)
     flash("The appointment was rejected!", "success")
     return True
 
@@ -92,11 +124,24 @@ def reschedule_appointment(appointment: Appointment, new_start: datetime, new_en
 
         appointment.reschedule(new_start, new_end)
         commit_changes()
-        return True
     except ValueError as e:
         flash(str(e), "error")
         return False
-
+    
+    try:
+        if current_user.account_type == "customer":
+            recipient = db.session.get(Contractor, appointment.schedule.contractor_id)
+        else:
+            recipient = db.session.get(Customer, appointment.customer_id)
+        if not recipient:
+            raise Exception("There was no recipient to send the amil too")
+        sent, email_message = send_reschedule_email(appointment, recipient)
+        if not sent:
+            current_app.logger.warning(email_message)
+    except Exception:
+        current_app.logger.exception("The appointment was rescheduled, but its email notification wasn't sent!")
+    return True
+    
 def get_appointment(appointment_id: int) -> Appointment:
     appointment = Appointment.query.filter_by(id=appointment_id).first()
 
